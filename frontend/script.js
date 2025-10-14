@@ -163,7 +163,7 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     // 3. Send data to your backend
-    const backendUrl = 'https://your-cloud-function-url.run.app/send-proposal';
+    const backendUrl = 'https://hr-yaar-backend.onrender.com/send-email';
 
     try {
         const response = await fetch(backendUrl, {
