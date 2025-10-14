@@ -163,7 +163,7 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     // 3. Send data to your backend
-    const backendUrl = 'https://hr-yaar-backend.onrender.com/send-email';
+    const backendUrl = 'https://hr-yaar-planner.vercel.app/api/send-email';
 
     try {
         const response = await fetch(backendUrl, {
