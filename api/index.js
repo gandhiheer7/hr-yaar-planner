@@ -1,10 +1,13 @@
+// Add this line at the top to load your .env file for local testing
+require('dotenv').config(); 
+
 const express = require('express');
 const cors = require('cors');
 const nodemailer = require('nodemailer');
 
 const app = express();
 app.use(cors()); // Enable requests from your website
-app.use(express.json({ limit: '10mb' })); // Allow large payloads for the PDF data
+app.use(express.json({ limit: '10mb' })); // Allow large payloads for the PDF
 
 // Set up the email transporter using credentials from environment variables
 const transporter = nodemailer.createTransport({
@@ -15,7 +18,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// Define the endpoint that will receive the data from your website
+// This is the endpoint your frontend will call
 app.post('/send-email', async (req, res) => {
   try {
     const { name, email, company, pdfData, ...otherDetails } = req.body;
@@ -28,21 +31,21 @@ app.post('/send-email', async (req, res) => {
       contentType: 'application/pdf',
     };
 
-    // --- Email to the User ---
+    // --- 1. Email to the User ---
     const userMailOptions = {
       from: `"HR Yaar" <${process.env.GMAIL_USER}>`,
       to: email,
       subject: 'Your Corporate Initiative Proposal from HR Yaar',
-      html: `<p>Dear ${name},</p><p>Thank you for your proposal! We will get back to you within two working days.</p><p>A summary of your selected plan is attached.</p><p>Best Regards,<br>The HR Yaar Team</p>`,
+      html: `<p>Dear ${name},</p><p>Thank you for planning your corporate initiatives with us! We have received your proposal and will get back to you within two working days.</p><p>A summary of your selected plan is attached to this email for your reference.</p><p>Best Regards,<br>The HR Yaar Team</p>`,
       attachments: [pdfAttachment],
     };
 
-    // --- Email to Your Company ---
+    // --- 2. Email to Your Company ---
     const companyMailOptions = {
       from: `"HR Yaar System" <${process.env.GMAIL_USER}>`,
       to: process.env.GMAIL_USER, // Sends the notification to your own Gmail
       subject: `URGENTLY NEEDED: New Proposal from ${company}`,
-      html: `<h3>New Proposal Submitted:</h3><pre>${JSON.stringify(otherDetails, null, 2)}</pre>`,
+      html: `<h3>New Corporate Initiative Proposal Submitted</h3><pre>${JSON.stringify(otherDetails, null, 2)}</pre>`,
       attachments: [pdfAttachment],
     };
 
@@ -58,4 +61,8 @@ app.post('/send-email', async (req, res) => {
   }
 });
 
-module.exports = app;
+// This part starts the server and makes it wait for requests
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});

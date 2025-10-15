@@ -1,0 +1,5 @@
+# Node.js dependencies folder
+api/node_modules
+
+# Local environment variables file
+.env
