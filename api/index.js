@@ -1,59 +1,46 @@
-// Add this line at the top to load your .env file for local testing
 require('dotenv').config(); 
-
 const express = require('express');
 const cors = require('cors');
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
 const app = express();
-app.use(cors()); // Enable requests from your website
-app.use(express.json({ limit: '10mb' })); // Allow large payloads for the PDF
+app.use(cors());
+app.use(express.json({ limit: '10mb' }));
 
-// Set up the email transporter using credentials from environment variables
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD, // The 16-digit App Password
-  },
-});
+// Initialize Resend with the API key from your environment variables
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-// This is the endpoint your frontend will call
 app.post('/send-email', async (req, res) => {
   try {
-    const { name, email, company, pdfData, ...otherDetails } = req.body;
+    const { name, email, company, pdfData, initiatives, ...otherDetails } = req.body;
 
-    const pdfBase64 = pdfData.split('base64,')[1];
-    const pdfAttachment = {
-      filename: 'Initiative_Proposal.pdf',
-      content: pdfBase64,
-      encoding: 'base64',
-      contentType: 'application/pdf',
-    };
-
-    // --- 1. Email to the User ---
-    const userMailOptions = {
-      from: `"HR Yaar" <${process.env.GMAIL_USER}>`,
-      to: email,
-      subject: 'Your Corporate Initiative Proposal from HR Yaar',
-      html: `<p>Dear ${name},</p><p>Thank you for planning your corporate initiatives with us! We have received your proposal and will get back to you within two working days.</p><p>A summary of your selected plan is attached to this email for your reference.</p><p>Best Regards,<br>The HR Yaar Team</p>`,
-      attachments: [pdfAttachment],
-    };
-
-    // --- 2. Email to Your Company ---
-    const companyMailOptions = {
-      from: `"HR Yaar System" <${process.env.GMAIL_USER}>`,
-      to: process.env.GMAIL_USER, // Sends the notification to your own Gmail
-      subject: `URGENTLY NEEDED: New Proposal from ${company}`,
-      html: `<h3>New Corporate Initiative Proposal Submitted</h3><pre>${JSON.stringify(otherDetails, null, 2)}</pre>`,
-      attachments: [pdfAttachment],
-    };
-
-    // Send both emails
-    await transporter.sendMail(userMailOptions);
-    await transporter.sendMail(companyMailOptions);
+    // Convert the Base64 PDF data to a Buffer, which Resend uses
+    const pdfBuffer = Buffer.from(pdfData.split('base64,')[1], 'base64');
     
-    res.status(200).json({ message: 'Emails sent successfully!' });
+    // Send one email to both the user and your company at the same time
+    await resend.emails.send({
+      from: 'HR Yaar <onboarding@resend.dev>', // Resend's default sending address
+      to: [email, 'yourcompany@email.com'], // Sends to both user and your company
+      subject: `New Proposal from ${company}`,
+      html: `
+        <h3>New Corporate Initiative Proposal Submitted</h3>
+        <p>A new proposal was submitted by ${name} from ${company}.</p>
+        <p>You can reach them at: ${email}.</p>
+        <p>The full proposal summary is attached as a PDF.</p>
+        <hr>
+        <p><em>This is a copy of the confirmation sent to the user:</em></p>
+        <p>Dear ${name},</p>
+        <p>Thank you for planning your corporate initiatives with us! We have received your proposal and will get back to you within two working days.</p>
+        <p>A summary of your selected plan is attached for your reference.</p>
+        <p>Best Regards,<br>The HR Yaar Team</p>
+      `,
+      attachments: [{
+        filename: 'Initiative_Proposal.pdf',
+        content: pdfBuffer,
+      }],
+    });
+    
+    res.status(200).json({ message: 'Email sent successfully!' });
 
   } catch (error) {
     console.error('Error sending email:', error);
@@ -61,7 +48,6 @@ app.post('/send-email', async (req, res) => {
   }
 });
 
-// This part starts the server and makes it wait for requests
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
